@@ -35,5 +35,14 @@ export interface Post {
   excerpt: string;
   content: string;
   createdAt: string;
-  userId: string;
+  userId: number;
+  type: 'about' | 'blog' | 'event' | 'service';
+}
+
+export interface Contact {
+  id?: number;
+  name: string;
+  email: string;
+  message: string;
+  createdAt: string;
 }
