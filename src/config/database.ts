@@ -46,14 +46,15 @@ export const initDatabase = async () => {
       )
     `);
 
-    // Kiểm tra schema bảng posts
-    const tableInfo = await db.all('PRAGMA table_info(posts)');
-    const hasTypeColumn = tableInfo.some((column: any) => column.name === 'type');
+    // Kiểm tra bảng posts đã tồn tại chưa
+    const postsTable = await db.get(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='posts'"
+    );
 
-    if (!hasTypeColumn) {
-      // Tạo bảng tạm với cột type
+    if (!postsTable) {
+      // Nếu chưa có bảng posts, tạo mới
       await db.exec(`
-        CREATE TABLE posts_temp (
+        CREATE TABLE posts (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           slug TEXT NOT NULL UNIQUE,
           title TEXT NOT NULL,
@@ -67,34 +68,39 @@ export const initDatabase = async () => {
           FOREIGN KEY (userId) REFERENCES users(id) ON DELETE RESTRICT
         )
       `);
-
-      // Di chuyển dữ liệu, mặc định type = 'blog' cho dữ liệu cũ
-      await db.exec(`
-        INSERT INTO posts_temp (id, slug, title, categoryId, excerpt, content, createdAt, userId, type)
-        SELECT id, slug, title, categoryId, excerpt, content, createdAt, userId, 'blog'
-        FROM posts
-      `);
-
-      // Xóa bảng cũ và đổi tên
-      await db.exec('DROP TABLE posts');
-      await db.exec('ALTER TABLE posts_temp RENAME TO posts');
     } else {
-      // Nếu bảng posts chưa tồn tại, tạo mới
-      await db.exec(`
-        CREATE TABLE IF NOT EXISTS posts (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          slug TEXT NOT NULL UNIQUE,
-          title TEXT NOT NULL,
-          categoryId INTEGER NOT NULL,
-          excerpt TEXT NOT NULL,
-          content TEXT NOT NULL,
-          createdAt TEXT NOT NULL,
-          userId INTEGER NOT NULL,
-          type TEXT NOT NULL CHECK(type IN ('about', 'blog', 'event', 'service')),
-          FOREIGN KEY (categoryId) REFERENCES categories(id) ON DELETE RESTRICT,
-          FOREIGN KEY (userId) REFERENCES users(id) ON DELETE RESTRICT
-        )
-      `);
+      // Nếu đã có bảng posts, kiểm tra cột type
+      const tableInfo = await db.all('PRAGMA table_info(posts)');
+      const hasTypeColumn = tableInfo.some((column: any) => column.name === 'type');
+      if (!hasTypeColumn) {
+        // Tạo bảng tạm với cột type
+        await db.exec(`
+          CREATE TABLE posts_temp (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            slug TEXT NOT NULL UNIQUE,
+            title TEXT NOT NULL,
+            categoryId INTEGER NOT NULL,
+            excerpt TEXT NOT NULL,
+            content TEXT NOT NULL,
+            createdAt TEXT NOT NULL,
+            userId INTEGER NOT NULL,
+            type TEXT NOT NULL CHECK(type IN ('about', 'blog', 'event', 'service')),
+            FOREIGN KEY (categoryId) REFERENCES categories(id) ON DELETE RESTRICT,
+            FOREIGN KEY (userId) REFERENCES users(id) ON DELETE RESTRICT
+          )
+        `);
+
+        // Di chuyển dữ liệu, mặc định type = 'blog' cho dữ liệu cũ
+        await db.exec(`
+          INSERT INTO posts_temp (id, slug, title, categoryId, excerpt, content, createdAt, userId, type)
+          SELECT id, slug, title, categoryId, excerpt, content, createdAt, userId, 'blog'
+          FROM posts
+        `);
+
+        // Xóa bảng cũ và đổi tên
+        await db.exec('DROP TABLE posts');
+        await db.exec('ALTER TABLE posts_temp RENAME TO posts');
+      }
     }
 
     console.log('Database initialized successfully');

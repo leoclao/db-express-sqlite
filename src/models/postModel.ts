@@ -2,11 +2,11 @@ import { getDb } from '../config/database';
 import { Post } from '../types';
 
 export const createPost = async (post: Post) => {
-  const { slug, title, categoryId, excerpt, content, createdAt, userId } = post;
+  const { slug, title, categoryId, excerpt, content, createdAt, userId, type } = post;
   const db = getDb();
   const result = await db.run(
-    'INSERT INTO posts (slug, title, categoryId, excerpt, content, createdAt, userId) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    [slug, title, categoryId, excerpt, content, createdAt, userId]
+    'INSERT INTO posts (slug, title, categoryId, excerpt, content, createdAt, userId, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    [slug, title, categoryId, excerpt, content, createdAt, userId, type]
   );
   return result.lastID;
 };
