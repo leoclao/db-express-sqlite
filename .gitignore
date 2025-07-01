@@ -17,6 +17,8 @@
 /.next/
 /out/
 
+dist/
+
 # production
 /build
 
@@ -39,3 +41,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# db
+db/*.sqlite
+database.sqlite
+database.sqlite.backup

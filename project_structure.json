@@ -1,0 +1,187 @@
+{
+    "name": "db-express-sqlite",
+    "description": "Mô tả dự án Express.js với SQLite và TypeScript.",
+    "technologies": [
+        "Express.js",
+        "SQLite",
+        "TypeScript",
+        "Node.js"
+    ],
+    "database": {
+        "type": "SQLite",
+        "filePath": "database.sqlite",
+        "models": []
+    },
+    "apiEndpoints": [
+        {
+            "path": "/",
+            "method": "GET",
+            "controller": "userRoutes"
+        },
+        {
+            "path": "/",
+            "method": "POST",
+            "controller": "userRoutes"
+        },
+        {
+            "path": "/",
+            "method": "GET",
+            "controller": "postRoutes"
+        },
+        {
+            "path": "/",
+            "method": "POST",
+            "controller": "postRoutes"
+        },
+        {
+            "path": "/:id",
+            "method": "DELETE",
+            "controller": "postRoutes"
+        },
+        {
+            "path": "/",
+            "method": "DELETE",
+            "controller": "postRoutes"
+        },
+        {
+            "path": "/category/:categoryId",
+            "method": "GET",
+            "controller": "postRoutes"
+        },
+        {
+            "path": "/latest",
+            "method": "GET",
+            "controller": "postRoutes"
+        },
+        {
+            "path": "/type/:type",
+            "method": "GET",
+            "controller": "postRoutes"
+        },
+        {
+            "path": "/home",
+            "method": "GET",
+            "controller": "postRoutes"
+        },
+        {
+            "path": "/",
+            "method": "POST",
+            "controller": "contactRoutes"
+        },
+        {
+            "path": "/",
+            "method": "GET",
+            "controller": "categoryRoutes"
+        },
+        {
+            "path": "/",
+            "method": "POST",
+            "controller": "categoryRoutes"
+        }
+    ],
+    "files": [
+        {
+            "path": "src/controllers/userController.ts",
+            "type": "file",
+            "contentSnippet": "import { Request, Response } from 'express';\nimport { createUser as createUserModel, getUsers } from '../models/userModel';\nimport { User } from '../types';\n\nexport const getAllUsers = async (req: Req..."
+        },
+        {
+            "path": "src/controllers/postController.ts",
+            "type": "file",
+            "contentSnippet": "import { Request, Response, RequestHandler } from \"express\";\nimport {\n  createPost,\n  getPosts,\n  deletePost as deletePostModel,\n  resetPosts,\n  getPostsByCategoryId,\n  getLatestPosts as getLatestPost..."
+        },
+        {
+            "path": "src/controllers/contactController.ts",
+            "type": "file",
+            "contentSnippet": "import { Request, Response, NextFunction } from \"express\";\nimport { createContact as createContactModel } from \"../models/contactModel\";\nimport { Contact } from \"../types\";\n\nexport const createContact..."
+        },
+        {
+            "path": "src/controllers/categoryController.ts",
+            "type": "file",
+            "contentSnippet": "import { Request, Response, RequestHandler } from 'express';\nimport { createCategory as createCategoryModel, getCategories } from '../models/categoryModel';\nimport { Category } from '../types';\n\nexpor..."
+        },
+        {
+            "path": "src/models/userModel.ts",
+            "type": "file",
+            "contentSnippet": "import { getDb } from '../config/database';\nimport { User } from '../types';\n\nexport const createUser = async (user: User) => {\n  const { name, username, email, address, phone, website, company } = us..."
+        },
+        {
+            "path": "src/models/postModel.ts",
+            "type": "file",
+            "contentSnippet": "import { getDb } from '../config/database';\nimport { Post } from '../types';\n\nexport const createPost = async (post: Post) => {\n  const { slug, title, categoryId, excerpt, content, createdAt, userId, ..."
+        },
+        {
+            "path": "src/models/contactModel.ts",
+            "type": "file",
+            "contentSnippet": "import { getDb } from '../config/database';\nimport { Contact } from '../types';\n\nexport const createContact = async (contact: Contact) => {\n  const { name, email, message, createdAt } = contact;\n  con..."
+        },
+        {
+            "path": "src/models/categoryModel.ts",
+            "type": "file",
+            "contentSnippet": "import { getDb } from '../config/database';\nimport { Category } from '../types';\n\nexport const createCategory = async (category: Category) => {\n  const { name } = category;\n  const db = getDb();\n  con..."
+        },
+        {
+            "path": "src/routes/userRoutes.ts",
+            "type": "file",
+            "contentSnippet": "import express, { RequestHandler } from 'express';\nimport { getAllUsers, createUser } from '../controllers/userController';\n\nconst router = express.Router();\n\nrouter.get('/', getAllUsers as RequestHan..."
+        },
+        {
+            "path": "src/routes/postRoutes.ts",
+            "type": "file",
+            "contentSnippet": "import express, { Router } from \"express\";\nimport {\n  getAllPosts,\n  createPostHandler,\n  deletePost,\n  resetAllPosts,\n  getPostsByCategory,\n  getLatestPosts,\n  getPostsByType,\n  getHomeData,\n} from \"..."
+        },
+        {
+            "path": "src/routes/contactRoutes.ts",
+            "type": "file",
+            "contentSnippet": "import express, { Router } from 'express';\nimport { createContact } from '../controllers/contactController';\n\nconst router: Router = express.Router();\n\nrouter.post('/', createContact);\n\nexport default..."
+        },
+        {
+            "path": "src/routes/categoryRoutes.ts",
+            "type": "file",
+            "contentSnippet": "import express from 'express';\nimport { getAllCategories, createCategory } from '../controllers/categoryController';\n\nconst router = express.Router();\n\nrouter.get('/', getAllCategories);\nrouter.post('..."
+        },
+        {
+            "path": "src/app.ts",
+            "type": "file",
+            "contentSnippet": "import express, { Application } from 'express';\nimport dotenv from 'dotenv';\nimport cors from 'cors';\nimport { initDatabase } from './config/database';\nimport userRoutes from './routes/userRoutes';\nim..."
+        },
+        {
+            "path": "src",
+            "type": "directory"
+        },
+        {
+            "path": "package.json",
+            "type": "file",
+            "contentSnippet": "{\n  \"name\": \"db-express-sqlite\",\n  \"version\": \"1.0.0\",\n  \"description\": \"\",\n  \"main\": \"app.js\",\n  \"scripts\": {\n    \"start\": \"node dist/app.js\",\n    \"dev\": \"nodemon src/app.ts\",\n    \"test\": \"echo \\\"Err..."
+        },
+        {
+            "path": "tsconfig.json",
+            "type": "file",
+            "contentSnippet": "{\n  \"compilerOptions\": {\n    /* Visit https://aka.ms/tsconfig to read more about this file */\n\n    /* Projects */\n    // \"incremental\": true,                              /* Save .tsbuildinfo files to..."
+        },
+        {
+            "path": "README.md",
+            "type": "file",
+            "contentSnippet": "# db-express-sqlite\n..."
+        }
+    ],
+    "dependencies": {
+        "@types/fs-extra": "^11.0.4",
+        "@types/glob": "^8.1.0",
+        "cors": "^2.8.5",
+        "dotenv": "^16.6.0",
+        "express": "^5.1.0",
+        "fs-extra": "^11.3.0",
+        "glob": "^11.0.3",
+        "sqlite": "^5.1.1",
+        "sqlite3": "^5.1.7",
+        "@types/cors": "^2.8.19",
+        "@types/express": "^5.0.3",
+        "@types/node": "^24.0.8",
+        "@types/path-to-regexp": "^1.0.29",
+        "@types/sqlite3": "^3.1.11",
+        "nodemon": "^3.1.10",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.8.3"
+    }
+}
