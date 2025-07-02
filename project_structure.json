@@ -20,11 +20,6 @@
         },
         {
             "path": "/",
-            "method": "POST",
-            "controller": "userRoutes"
-        },
-        {
-            "path": "/",
             "method": "GET",
             "controller": "postRoutes"
         },
@@ -123,7 +118,7 @@
         {
             "path": "src/routes/userRoutes.ts",
             "type": "file",
-            "contentSnippet": "import express, { RequestHandler } from 'express';\nimport { getAllUsers, createUser } from '../controllers/userController';\n\nconst router = express.Router();\n\nrouter.get('/', getAllUsers as RequestHan..."
+            "contentSnippet": "import express, { Router, RequestHandler } from 'express';\nimport { body } from 'express-validator';\nimport { getAllUsers, createUser } from '../controllers/userController';\nimport { validateRequest }..."
         },
         {
             "path": "src/routes/postRoutes.ts",
@@ -171,12 +166,14 @@
         "cors": "^2.8.5",
         "dotenv": "^16.6.0",
         "express": "^5.1.0",
+        "express-validator": "^7.2.1",
         "fs-extra": "^11.3.0",
         "glob": "^11.0.3",
         "sqlite": "^5.1.1",
         "sqlite3": "^5.1.7",
         "@types/cors": "^2.8.19",
         "@types/express": "^5.0.3",
+        "@types/express-validator": "^3.0.2",
         "@types/node": "^24.0.8",
         "@types/path-to-regexp": "^1.0.29",
         "@types/sqlite3": "^3.1.11",

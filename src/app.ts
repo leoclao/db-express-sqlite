@@ -1,12 +1,15 @@
 import express, { Application } from 'express';
 import dotenv from 'dotenv';
+import helmet from 'helmet';
 import cors from 'cors';
 import { initDatabase } from './config/database';
-import userRoutes from './routes/userRoutes';
-import postRoutes from './routes/postRoutes';
-import categoryRoutes from './routes/categoryRoutes';
-import contactRoutes from './routes/contactRoutes';
+import userRoutes from './routes/v1/userRoutes';
+import postRoutes from './routes/v1/postRoutes';
+import categoryRoutes from './routes/v1/categoryRoutes';
+import contactRoutes from './routes/v1/contactRoutes';
 import { errorHandler } from './middlewares/errorHandler';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerDocs } from './swagger';
 
 // dotenv.config();
 const envFile = `.env.${process.env.NODE_ENV || 'development'}`;
@@ -14,6 +17,9 @@ dotenv.config({ path: envFile });
 
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
+
+// Thêm helmet để bảo mật
+app.use(helmet());
 
 // Cấu hình CORS
 app.use(cors({
@@ -23,22 +29,22 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'], // Các header được phép
 }));
 // app.options('*', cors()); // Xử lý yêu cầu OPTIONS (preflight)
-app.options('/api/posts', cors({
+app.options('/api/v1/posts', cors({
   origin: 'http://localhost:3000',
   methods: ['GET'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
-app.options('/api/users', cors({
+app.options('/api/v1/users', cors({
   origin: 'http://localhost:3000',
   methods: ['GET'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
-app.options('/api/categories', cors({
+app.options('/api/v1/categories', cors({
   origin: 'http://localhost:3000',
   methods: ['GET'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
-app.options('/api/contact', cors({
+app.options('/api/v1/contact', cors({
   origin: 'http://localhost:3000',
   methods: ['POST'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -46,12 +52,14 @@ app.options('/api/contact', cors({
 
 app.use(express.json());
 
-app.use('/api/users', userRoutes);
-app.use('/api/posts', postRoutes);
-app.use('/api/categories', categoryRoutes);
-app.use('/api/contact', contactRoutes);
+app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/posts', postRoutes);
+app.use('/api/v1/categories', categoryRoutes);
+app.use('/api/v1/contact', contactRoutes);
 
 app.use(errorHandler);
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 const startServer = async () => {
   try {
