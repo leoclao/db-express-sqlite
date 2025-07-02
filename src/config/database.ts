@@ -1,15 +1,15 @@
 import sqlite3 from 'sqlite3';
 import { Database, open } from 'sqlite';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 let db: Database;
 
 export const initDatabase = async () => {
   try {
+    const dbPath = process.env.DATABASE_PATH || `./db/${process.env.NODE_ENV || 'development'}.sqlite`;
+    console.log(`Initializing database at ${dbPath}`);
+    console.log(`process.env.DATABASE_PATH at ${process.env.DATABASE_PATH}`);
     db = await open({
-      filename: process.env.DATABASE_PATH || './database.sqlite',
+      filename: dbPath,
       driver: sqlite3.Database,
     });
 

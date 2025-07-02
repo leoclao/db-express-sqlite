@@ -15,13 +15,15 @@ export const createUser = async (req: Request, res: Response) => {
   const user: User = req.body;
   try {
     if (!user.name || !user.email) {
-      return res.status(400).json({ error: 'Name and email are required' });
+      res.status(400).json({ error: 'Name and email are required' })
+      return;
     }
     const userId = await createUserModel(user);
     res.status(201).json({ message: 'User created', userId });
   } catch (error: any) {
     if (error.message.includes('SQLITE_CONSTRAINT: UNIQUE constraint failed')) {
-      return res.status(400).json({ error: 'Email already exists' });
+      res.status(400).json({ error: 'Email already exists' })
+      return;
     }
     res.status(500).json({ error: 'Internal server error', details: error.message });
   }
