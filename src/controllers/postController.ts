@@ -13,7 +13,7 @@ import {
 import { getCategoryById } from "../models/categoryModel";
 import { getUserById } from "../models/userModel";
 import { getCategories } from "../models/categoryModel";
-import { Post } from "../types";
+import { InterfacePost } from "../types";
 
 export const getAllPostsController = async (req: Request, res: Response) => {
   const { limit = 10, offset = 0, sort = 'createdAt', order = 'DESC' } = req.query;
@@ -57,7 +57,7 @@ export const getPostsByIdController = async (req: Request, res: Response) => {
 };
 
 export const createPostController: RequestHandler = async (req: Request, res: Response): Promise<void> => {
-  const post: Post = req.body;
+  const post: InterfacePost = req.body;
   try {
     if (
       !post.slug ||
@@ -110,7 +110,7 @@ export const createPostController: RequestHandler = async (req: Request, res: Re
 
 export const updatePostController: RequestHandler = async (req: Request, res: Response): Promise<void> => {
   const id = parseInt(req.params.id, 10);
-  const post: Partial<Post> = req.body;
+  const post: Partial<InterfacePost> = req.body;
 
   try {
     if (isNaN(id)) {
@@ -145,7 +145,7 @@ export const updatePostController: RequestHandler = async (req: Request, res: Re
     }
 
     const changes = await updatePostModel(id, post);
-    if (changes === 0) {
+    if (!changes || (typeof changes === 'object' && Object.keys(changes).length === 0)) {
       res.status(400).json({ error: "No changes made" });
       return;
     }
@@ -168,7 +168,7 @@ export const deletePostController: RequestHandler = async (req: Request, res: Re
       return;
     }
     const changes = await deletePostModel(id);
-    if (changes === 0) {
+    if (changes.affected || changes.affected === 0 || changes.raw || changes.raw === 0) {
       res.status(404).json({ error: "Post not found" });
       return;
     }

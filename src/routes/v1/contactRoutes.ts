@@ -38,9 +38,6 @@ import { createContact } from '../../controllers/contactController';
  *               phone:
  *                 type: string
  *                 example: "+1234567890"
- *             required:
- *               - name
- *               - email
  *     responses:
  *       201:
  *         description: Contact created successfully
@@ -49,7 +46,7 @@ import { createContact } from '../../controllers/contactController';
  *             schema:
  *               $ref: '#/components/schemas/Contact'
  *       400:
- *         description: Invalid input
+ *         description: Invalid request data
  *       401:
  *         description: Unauthorized
  */

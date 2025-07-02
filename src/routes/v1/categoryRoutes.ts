@@ -23,18 +23,18 @@ import { getAllCategories, createCategory } from '../../controllers/categoryCont
  * @swagger
  * tags:
  *   name: Categories
- *   description: Category management
+ *   description: API endpoints for managing categories
  */
 
 /**
  * @swagger
  * /v1/categories:
  *   get:
- *     summary: Get all categories
+ *     summary: Retrieve a list of categories
  *     tags: [Categories]
  *     responses:
  *       200:
- *         description: List of categories
+ *         description: A list of categories
  *         content:
  *           application/json:
  *             schema:
@@ -44,19 +44,23 @@ import { getAllCategories, createCategory } from '../../controllers/categoryCont
  *   post:
  *     summary: Create a new category
  *     tags: [Categories]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Category'
+ *             $ref: '#/components/schemas/CategoryInput'
  *     responses:
  *       201:
- *         description: Category created
+ *         description: The created category
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Category'
+ *       401:
+ *         description: Unauthorized
  */
 
 const router = express.Router();

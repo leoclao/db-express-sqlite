@@ -1,6 +1,6 @@
 import { Request, Response, RequestHandler } from 'express';
 import { createCategory as createCategoryModel, getCategories } from '../models/categoryModel';
-import { Category } from '../types';
+import { InterfaceCategory } from '../types';
 
 export const getAllCategories = async (req: Request, res: Response) => {
   try {
@@ -12,7 +12,7 @@ export const getAllCategories = async (req: Request, res: Response) => {
 };
 
 export const createCategory: RequestHandler = async (req, res, next) => {
-  const category: Category = req.body;
+  const category: InterfaceCategory = req.body;
   try {
     if (!category.name) {
       res.status(400).json({ error: 'Category name is required' });

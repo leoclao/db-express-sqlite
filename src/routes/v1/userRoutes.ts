@@ -1,4 +1,3 @@
-
 /**
  * Express router for user-related API endpoints (version 1).
  *

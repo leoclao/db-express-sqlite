@@ -7,7 +7,11 @@
     "start": "node dist/app.js",
     "dev": "nodemon src/app.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc"
+    "build": "tsc",
+    "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js",
+    "migration:generate": "npm run typeorm migration:generate",
+    "migration:run": "npm run typeorm migration:run",
+    "scan": "npx ts-node project-scanner.ts"
   },
   "repository": {
     "type": "git",
@@ -34,10 +38,12 @@
     "glob": "^11.0.3",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
+    "reflect-metadata": "^0.2.2",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.1"
+    "swagger-ui-express": "^5.0.1",
+    "typeorm": "^0.3.25"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
@@ -46,8 +52,10 @@
     "@types/node": "^24.0.8",
     "@types/path-to-regexp": "^1.0.29",
     "@types/sqlite3": "^3.1.11",
+    "@types/swagger-jsdoc": "^6.0.4",
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^5.8.3"
   }
 }
