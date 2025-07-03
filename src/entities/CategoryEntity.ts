@@ -20,6 +20,14 @@ import { InterfaceCategory } from "../types";
  *           items:
  *             $ref: '#/components/schemas/Post'
  *           description: The posts that belong to this category.
+ *     CategoryInput:
+ *       type: object
+ *       required:
+ *         - name
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: The unique name of the category.
  */
 
 @Entity()
