@@ -1,19 +1,20 @@
-import { getDb } from '../config/database';
-import { Category } from '../types';
+import { AppDataSource } from '../config/ormconfig';
+import { CategoryEntity } from '../entities/CategoryEntity';
+import { InterfaceCategory } from '../types';
 
-export const createCategory = async (category: Category) => {
-  const { name } = category;
-  const db = getDb();
-  const result = await db.run('INSERT INTO categories (name) VALUES (?)', [name]);
-  return result.lastID;
+export const createCategory = async (category: InterfaceCategory) => {
+  const repo = AppDataSource.getRepository(CategoryEntity);
+  const newCategory = repo.create(category);
+  const result = await repo.save(newCategory);
+  return result;
 };
 
 export const getCategories = async () => {
-  const db = getDb();
-  return await db.all('SELECT * FROM categories');
+  const repo = AppDataSource.getRepository(CategoryEntity);
+  return await repo.find();
 };
 
 export const getCategoryById = async (id: number) => {
-  const db = getDb();
-  return await db.get('SELECT id FROM categories WHERE id = ?', [id]);
+  const repo = AppDataSource.getRepository(CategoryEntity);
+  return await repo.findOneBy({ id });
 };

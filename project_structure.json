@@ -24,8 +24,18 @@
             "controller": "postRoutes"
         },
         {
+            "path": "/:id",
+            "method": "GET",
+            "controller": "postRoutes"
+        },
+        {
             "path": "/",
             "method": "POST",
+            "controller": "postRoutes"
+        },
+        {
+            "path": "/:id",
+            "method": "PUT",
             "controller": "postRoutes"
         },
         {
@@ -34,8 +44,8 @@
             "controller": "postRoutes"
         },
         {
-            "path": "/",
-            "method": "DELETE",
+            "path": "/reset",
+            "method": "POST",
             "controller": "postRoutes"
         },
         {
@@ -78,67 +88,67 @@
         {
             "path": "src/controllers/userController.ts",
             "type": "file",
-            "contentSnippet": "import { Request, Response } from 'express';\nimport { createUser as createUserModel, getUsers } from '../models/userModel';\nimport { User } from '../types';\n\nexport const getAllUsers = async (req: Req..."
+            "contentSnippet": "import { Request, Response } from 'express';\nimport { createUser as createUserModel, getUsers } from '../models/userModel';\nimport { InterfaceUser } from '../types';\n\nexport const getAllUsers = async ..."
         },
         {
             "path": "src/controllers/postController.ts",
             "type": "file",
-            "contentSnippet": "import { Request, Response, RequestHandler } from \"express\";\nimport {\n  createPost,\n  getPosts,\n  deletePost as deletePostModel,\n  resetPosts,\n  getPostsByCategoryId,\n  getLatestPosts as getLatestPost..."
+            "contentSnippet": "import { Request, Response, RequestHandler } from \"express\";\nimport {\n  createPostModel,\n  updatePostModel,\n  getPostsModel,\n  getPostsByIdModel,\n  deletePostModel,\n  resetPostsModel,\n  getPostsByCate..."
         },
         {
             "path": "src/controllers/contactController.ts",
             "type": "file",
-            "contentSnippet": "import { Request, Response, NextFunction } from \"express\";\nimport { createContact as createContactModel } from \"../models/contactModel\";\nimport { Contact } from \"../types\";\n\nexport const createContact..."
+            "contentSnippet": "import { Request, Response, NextFunction } from \"express\";\nimport { createContact as createContactModel } from \"../models/contactModel\";\nimport { InterfaceContact } from \"../types\";\n\nexport const crea..."
         },
         {
             "path": "src/controllers/categoryController.ts",
             "type": "file",
-            "contentSnippet": "import { Request, Response, RequestHandler } from 'express';\nimport { createCategory as createCategoryModel, getCategories } from '../models/categoryModel';\nimport { Category } from '../types';\n\nexpor..."
+            "contentSnippet": "import { Request, Response, RequestHandler } from 'express';\nimport { createCategory as createCategoryModel, getCategories } from '../models/categoryModel';\nimport { InterfaceCategory } from '../types..."
         },
         {
             "path": "src/models/userModel.ts",
             "type": "file",
-            "contentSnippet": "import { getDb } from '../config/database';\nimport { User } from '../types';\n\nexport const createUser = async (user: User) => {\n  const { name, username, email, address, phone, website, company } = us..."
+            "contentSnippet": "import { AppDataSource } from '../config/ormconfig';\nimport { UserEntity } from '../entities/UserEntity';\nimport { InterfaceUser } from '../types';\n\nexport const createUser = async (user: InterfaceUse..."
         },
         {
             "path": "src/models/postModel.ts",
             "type": "file",
-            "contentSnippet": "import { getDb } from '../config/database';\nimport { Post } from '../types';\n\nexport const createPost = async (post: Post) => {\n  const { slug, title, categoryId, excerpt, content, createdAt, userId, ..."
+            "contentSnippet": "import { AppDataSource } from '../config/ormconfig';\nimport { InterfacePost } from '../types';\nimport { PostEntity } from '../entities/PostEntity';\n\nexport const createPostModel = async (data: Partial..."
         },
         {
             "path": "src/models/contactModel.ts",
             "type": "file",
-            "contentSnippet": "import { getDb } from '../config/database';\nimport { Contact } from '../types';\n\nexport const createContact = async (contact: Contact) => {\n  const { name, email, message, createdAt } = contact;\n  con..."
+            "contentSnippet": "import { AppDataSource } from '../config/ormconfig';\nimport { ContactEntity } from '../entities/ContactEntity';\nimport { InterfaceContact } from '../types';\n\nexport const createContact = async (contac..."
         },
         {
             "path": "src/models/categoryModel.ts",
             "type": "file",
-            "contentSnippet": "import { getDb } from '../config/database';\nimport { Category } from '../types';\n\nexport const createCategory = async (category: Category) => {\n  const { name } = category;\n  const db = getDb();\n  con..."
+            "contentSnippet": "import { AppDataSource } from '../config/ormconfig';\nimport { CategoryEntity } from '../entities/CategoryEntity';\nimport { InterfaceCategory } from '../types';\n\nexport const createCategory = async (ca..."
         },
         {
-            "path": "src/routes/userRoutes.ts",
+            "path": "src/routes/v1/userRoutes.ts",
             "type": "file",
-            "contentSnippet": "import express, { Router, RequestHandler } from 'express';\nimport { body } from 'express-validator';\nimport { getAllUsers, createUser } from '../controllers/userController';\nimport { validateRequest }..."
+            "contentSnippet": "\n/**\n * Express router for user-related API endpoints (version 1).\n *\n * @module routes/v1/userRoutes\n *\n * @remarks\n * This router handles HTTP requests for user resources, including retrieving all u..."
         },
         {
-            "path": "src/routes/postRoutes.ts",
+            "path": "src/routes/v1/postRoutes.ts",
             "type": "file",
-            "contentSnippet": "import express, { Router } from \"express\";\nimport {\n  getAllPosts,\n  createPostHandler,\n  deletePost,\n  resetAllPosts,\n  getPostsByCategory,\n  getLatestPosts,\n  getPostsByType,\n  getHomeData,\n} from \"..."
+            "contentSnippet": "/**\n * Express router for handling post-related API endpoints.\n *\n * ## Routes\n * - `GET /` - Retrieve all posts.\n * - `GET /:id` - Retrieve a post by its ID.\n * - `POST /` - Create a new post.\n * - `..."
         },
         {
-            "path": "src/routes/contactRoutes.ts",
+            "path": "src/routes/v1/contactRoutes.ts",
             "type": "file",
-            "contentSnippet": "import express, { Router } from 'express';\nimport { createContact } from '../controllers/contactController';\n\nconst router: Router = express.Router();\n\nrouter.post('/', createContact);\n\nexport default..."
+            "contentSnippet": "/**\n * Express router for contact-related endpoints (API v1).\n *\n * @module routes/v1/contactRoutes\n * @remarks\n * This router handles contact creation requests. It applies authentication middleware\n ..."
         },
         {
-            "path": "src/routes/categoryRoutes.ts",
+            "path": "src/routes/v1/categoryRoutes.ts",
             "type": "file",
-            "contentSnippet": "import express from 'express';\nimport { getAllCategories, createCategory } from '../controllers/categoryController';\n\nconst router = express.Router();\n\nrouter.get('/', getAllCategories);\nrouter.post('..."
+            "contentSnippet": "/**\n * Express router for category-related API endpoints (v1).\n *\n * @module routes/v1/categoryRoutes\n *\n * @remarks\n * This router handles HTTP requests for category resources, including:\n * - Retrie..."
         },
         {
             "path": "src/app.ts",
             "type": "file",
-            "contentSnippet": "import express, { Application } from 'express';\nimport dotenv from 'dotenv';\nimport cors from 'cors';\nimport { initDatabase } from './config/database';\nimport userRoutes from './routes/userRoutes';\nim..."
+            "contentSnippet": "import express, { Application } from 'express';\nimport dotenv from 'dotenv';\nimport helmet from 'helmet';\nimport cors from 'cors';\nimport { AppDataSource } from './config/ormconfig';\nimport userRoutes..."
         },
         {
             "path": "src",
@@ -157,28 +167,39 @@
         {
             "path": "README.md",
             "type": "file",
-            "contentSnippet": "# db-express-sqlite\n..."
+            "contentSnippet": "# db-express-sqlite\n\nA RESTful API built with Express.js, SQLite, and TypeScript for managing users, posts, categories, and contacts.\n\n## Table of Contents\n- [Description](#description)\n- [Technologie..."
         }
     ],
     "dependencies": {
         "@types/fs-extra": "^11.0.4",
         "@types/glob": "^8.1.0",
+        "@types/helmet": "^0.0.48",
+        "@types/jsonwebtoken": "^9.0.10",
+        "@types/swagger-ui-express": "^4.1.8",
         "cors": "^2.8.5",
         "dotenv": "^16.6.0",
         "express": "^5.1.0",
         "express-validator": "^7.2.1",
         "fs-extra": "^11.3.0",
         "glob": "^11.0.3",
+        "helmet": "^8.1.0",
+        "jsonwebtoken": "^9.0.2",
+        "reflect-metadata": "^0.2.2",
         "sqlite": "^5.1.1",
         "sqlite3": "^5.1.7",
+        "swagger-jsdoc": "^6.2.8",
+        "swagger-ui-express": "^5.0.1",
+        "typeorm": "^0.3.25",
         "@types/cors": "^2.8.19",
         "@types/express": "^5.0.3",
         "@types/express-validator": "^3.0.2",
         "@types/node": "^24.0.8",
         "@types/path-to-regexp": "^1.0.29",
         "@types/sqlite3": "^3.1.11",
+        "@types/swagger-jsdoc": "^6.0.4",
         "nodemon": "^3.1.10",
         "ts-node": "^10.9.2",
+        "tsconfig-paths": "^4.2.0",
         "typescript": "^5.8.3"
     }
 }

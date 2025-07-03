@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { createUser as createUserModel, getUsers } from '../models/userModel';
-import { User } from '../types';
+import { InterfaceUser } from '../types';
 
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
@@ -12,7 +12,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
 };
 
 export const createUser = async (req: Request, res: Response) => {
-  const user: User = req.body;
+  const user: InterfaceUser = req.body;
   try {
     if (!user.name || !user.email) {
       res.status(400).json({ error: 'Name and email are required' })

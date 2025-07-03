@@ -12,7 +12,7 @@ const options = {
       { url: 'http://localhost:3001/api/v1' },
     ],
   },
-  apis: ['./src/routes/v1/*.ts'], // Đường dẫn đến các file route
+  apis: ['./src/routes/v1/*.ts', "src/entities/*.ts"],
 };
 
 export const swaggerDocs = swaggerJsdoc(options);

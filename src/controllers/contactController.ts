@@ -1,13 +1,13 @@
 import { Request, Response, NextFunction } from "express";
 import { createContact as createContactModel } from "../models/contactModel";
-import { Contact } from "../types";
+import { InterfaceContact } from "../types";
 
 export const createContact = async (
   req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
-  const contact: Contact = req.body;
+  const contact: InterfaceContact = req.body;
   try {
     if (
       !contact.name ||

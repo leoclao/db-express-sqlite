@@ -1,64 +1,29 @@
-import { getDb } from '../config/database';
-import { Post } from '../types';
+import { AppDataSource } from '../config/ormconfig';
+import { InterfacePost } from '../types';
+import { PostEntity } from '../entities/PostEntity';
 
-export const createPostModel = async (post: Post) => {
-  const { slug, title, categoryId, excerpt, content, createdAt, userId, type } = post;
-  const db = getDb();
-  const result = await db.run(
-    'INSERT INTO posts (slug, title, categoryId, excerpt, content, createdAt, userId, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    [slug, title, categoryId, excerpt, content, createdAt, userId, type]
-  );
-  return result.lastID;
+export const createPostModel = async (data: Partial<InterfacePost>) => {
+  const repo = AppDataSource.getRepository(PostEntity);
+  const post = repo.create(data);
+  const result = await repo.save(post);
+  return result;
 };
 
-export const updatePostModel = async (id: number, post: Partial<Post>) => {
-  const db = getDb();
-
-  // Lọc ra các trường hợp lệ để update
-  const fields = [
-    "slug",
-    "title",
-    "categoryId",
-    "excerpt",
-    "content",
-    "createdAt",
-    "userId",
-    "type",
-  ] as const;
-
-  const setClauses: string[] = [];
-  const values: any[] = [];
-
-  fields.forEach((field) => {
-    if (post[field] !== undefined) {
-      setClauses.push(`${field} = ?`);
-      values.push(post[field]);
-    }
-  });
-
-  if (setClauses.length === 0) {
-    return 0; // Không có gì để update
-  }
-
-  values.push(id);
-
-  const result = await db.run(
-    `UPDATE posts SET ${setClauses.join(", ")} WHERE id = ?`,
-    values
-  );
-  return result.changes; // Số hàng bị cập nhật
+export const updatePostModel = async (id: number, data: Partial<InterfacePost>) => {
+  
+  const repo = AppDataSource.getRepository(PostEntity);
+  await repo.update(id, data);
+  return await repo.findOneBy({ id });
 };
 
 export const deletePostModel = async (id: number) => {
-  const db = getDb();
-  const result = await db.run('DELETE FROM posts WHERE id = ?', [id]);
-  return result.changes; // Số hàng bị xóa
+  const repo = AppDataSource.getRepository(PostEntity);
+  return await repo.delete(id);
 };
 
 export const resetPostsModel = async () => {
-  const db = getDb();
-  const result = await db.run('DELETE FROM posts');
-  return result.changes;
+  const repo = AppDataSource.getRepository(PostEntity);
+  return await repo.clear();
 };
 
 export const getPostsModel = async (
@@ -67,34 +32,30 @@ export const getPostsModel = async (
   sort: string = 'createdAt',
   order: string = 'DESC'
 ) => {
-  const db = getDb();
-  const allowedSortFields = [
-    "id", "slug", "title", "categoryId", "excerpt", "content", "createdAt", "userId", "type"
-  ];
-  const sortField = allowedSortFields.includes(sort) ? sort : "createdAt";
-  const sortOrder = order === "ASC" ? "ASC" : "DESC";
-  return await db.all(
-    `SELECT * FROM posts ORDER BY ${sortField} ${sortOrder} LIMIT ? OFFSET ?`,
-    [limit, offset]
-  );
+  const repo = AppDataSource.getRepository(PostEntity);
+  const queryBuilder = repo.createQueryBuilder('post')
+    .orderBy(`post.${sort}`, order.toUpperCase() as 'ASC' | 'DESC')
+    .skip(offset)
+    .take(limit);
+  return await queryBuilder.getMany();
 };
 
 export const getPostsByIdModel = async ( id: number ) => {
-  const db = getDb();
-  return await db.all('SELECT FROM posts WHERE id = ?', [id]);
+  const repo = AppDataSource.getRepository(PostEntity);
+  return await repo.findOneBy({ id });
 };
 
 export const getPostsByCategoryIdModel = async (categoryId: number) => {
-  const db = getDb();
-  return await db.all('SELECT * FROM posts WHERE categoryId = ?', [categoryId]);
+  const repo = AppDataSource.getRepository(PostEntity);
+  return await repo.find({ where: { categoryId } });
 };
 
 export const getLatestPostsModel = async (limit: number = 5) => {
-  const db = getDb();
-  return await db.all('SELECT * FROM posts ORDER BY createdAt DESC LIMIT ?', [limit]);
+  const repo = AppDataSource.getRepository(PostEntity);
+  return await repo.find({ order: { createdAt: "DESC" }, take: limit });
 };
 
 export const getPostsByTypeModel = async (type: string) => {
-  const db = getDb();
-  return await db.all('SELECT * FROM posts WHERE type = ?', [type]);
+  const repo = AppDataSource.getRepository(PostEntity);
+  return await repo.find({ where: { type: type as PostEntity["type"] } });
 };

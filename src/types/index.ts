@@ -1,4 +1,4 @@
-export interface User {
+export interface InterfaceUser {
   id?: number;
   name: string;
   username?: string;
@@ -22,12 +22,12 @@ export interface User {
   };
 }
 
-export interface Category {
+export interface InterfaceCategory {
   id?: number;
   name: string;
 }
 
-export interface Post {
+export interface InterfacePost {
   id?: number;
   slug: string;
   title: string;
@@ -39,7 +39,7 @@ export interface Post {
   type: 'about' | 'blog' | 'event' | 'service';
 }
 
-export interface Contact {
+export interface InterfaceContact {
   id?: number;
   name: string;
   email: string;

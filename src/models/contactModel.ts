@@ -1,12 +1,10 @@
-import { getDb } from '../config/database';
-import { Contact } from '../types';
+import { AppDataSource } from '../config/ormconfig';
+import { ContactEntity } from '../entities/ContactEntity';
+import { InterfaceContact } from '../types';
 
-export const createContact = async (contact: Contact) => {
-  const { name, email, message, createdAt } = contact;
-  const db = getDb();
-  const result = await db.run(
-    'INSERT INTO contacts (name, email, message, createdAt) VALUES (?, ?, ?, ?)',
-    [name, email, message, createdAt]
-  );
-  return result.lastID;
+export const createContact = async (contact: InterfaceContact) => {
+  const repo = AppDataSource.getRepository(ContactEntity);
+  const newContact = repo.create(contact);
+  const result = await repo.save(newContact);
+  return result;
 };
