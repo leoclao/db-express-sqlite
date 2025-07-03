@@ -1,49 +1,40 @@
-/**
- * Express router for user-related API endpoints (version 1).
- *
- * @module routes/v1/userRoutes
- *
- * @remarks
- * This router handles HTTP requests for user resources, including retrieving all users and creating a new user.
- *
- * @see {@link ../../controllers/userController} for controller logic.
- * @see {@link ../../middlewares/validation} for request validation middleware.
- *
- * @example
- * // Register the router in your Express app:
- * import userRoutes from './routes/v1/userRoutes';
- * app.use('/api/v1/users', userRoutes);
- *
- * @route GET / - Retrieve all users.
- * @route POST / - Create a new user with validation.
- */
-import express, { Router, RequestHandler } from 'express';
-import { body } from 'express-validator';
-import { getAllUsers, createUser } from '../../controllers/userController';
-import { validateRequest } from '../../middlewares/validation';
+import { Router } from 'express';
+import { getAllUsers, createUser, getUserById, updateUser, deleteUser } from '../../controllers/userController';
+import { validateCreateUser, validateUpdateUser } from '../../middleware/validators/userValidator';
+import { catchAsync } from '../../middleware/errorHandler';
 
-/**
- * @swagger
- * tags:
- *   name: Users
- *   description: User management and retrieval
- */
+const router = Router();
 
 /**
  * @swagger
  * /api/v1/users:
  *   get:
- *     summary: Retrieve all users
+ *     summary: Get all users
  *     tags: [Users]
  *     responses:
  *       200:
- *         description: A list of users
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/User'
+ *         description: List of users
+ */
+router.get('/', catchAsync(getAllUsers));
+
+/**
+ * @swagger
+ * /api/v1/users/{id}:
+ *   get:
+ *     summary: Get user by ID
+ *     tags: [Users]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ */
+router.get('/:id', catchAsync(getUserById));
+
+/**
+ * @swagger
+ * /api/v1/users:
  *   post:
  *     summary: Create a new user
  *     tags: [Users]
@@ -52,35 +43,31 @@ import { validateRequest } from '../../middlewares/validation';
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/User'
- *     responses:
- *       201:
- *         description: User created successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
- *       400:
- *         description: Invalid input
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
  */
+router.post('/', validateCreateUser, catchAsync(createUser));
 
-const router: Router = express.Router();
+/**
+ * @swagger
+ * /api/v1/users/{id}:
+ *   put:
+ *     summary: Update user
+ *     tags: [Users]
+ */
+router.put('/:id', validateUpdateUser, catchAsync(updateUser));
 
-router.get('/', getAllUsers);
-
-router.post(
-  '/',
-  [
-    body('name').notEmpty().withMessage('Name is required'),
-    body('email').isEmail().withMessage('Invalid email format'),
-    body('username').optional().isString().withMessage('Username must be a string'),
-    body('address').optional().isString().withMessage('Address must be a string'),
-    body('phone').optional().isString().withMessage('Phone must be a string'),
-    body('website').optional().isURL().withMessage('Invalid website URL'),
-    body('company').optional().isString().withMessage('Company must be a string'),
-    validateRequest as RequestHandler,
-  ],
-  createUser
-);
+/**
+ * @swagger
+ * /api/v1/users/{id}:
+ *   delete:
+ *     summary: Delete user
+ *     tags: [Users]
+ */
+router.delete('/:id', catchAsync(deleteUser));
 
 export default router;
