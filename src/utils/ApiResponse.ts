@@ -1,21 +1,3 @@
-import { DataSource } from 'typeorm';
-import { config } from './index';
-import { UserEntity } from '../entities/UserEntity';
-import { PostEntity } from '../entities/PostEntity';
-import { CategoryEntity } from '../entities/CategoryEntity';
-import { ContactEntity } from '../entities/ContactEntity';
-
-export const AppDataSource = new DataSource({
-  type: config.database.type,
-  database: config.database.database,
-  synchronize: config.database.synchronize,
-  logging: config.database.logging,
-  entities: [UserEntity, PostEntity, CategoryEntity, ContactEntity],
-  migrations: ['src/migrations/*.ts'],
-  subscribers: ['src/subscribers/*.ts'],
-});
-
-// src/utils/ApiResponse.ts
 export class ApiResponse {
   static success(data: any, message: string = 'Success', statusCode: number = 200) {
     return {

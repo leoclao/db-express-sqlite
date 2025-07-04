@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
-import { UserService } from '../services/UserService';
+import { UserService } from '../services';
 
 class UserController {
   private userService: UserService;

@@ -47,6 +47,9 @@ export class UserEntity implements InterfaceUser {
   username?: string;
 
   @Column()
+  password!: string;
+
+  @Column()
   email!: string;
 
   @Column({ type: "text", nullable: true })
@@ -60,4 +63,7 @@ export class UserEntity implements InterfaceUser {
 
   @Column({ type: "text", nullable: true })
   company?: InterfaceUser["company"];
+
+  @Column({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" })
+  createdAt?: string | undefined;
 }

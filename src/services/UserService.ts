@@ -1,6 +1,6 @@
 import { Repository } from 'typeorm';
 import { AppDataSource } from '../config/ormconfig';
-import { UserEntity } from '../entities/UserEntity';
+import { UserEntity } from '../entities';
 import { InterfaceUser } from '../types';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -61,6 +61,7 @@ export class UserService {
     token: string;
   } | null> {
     const user = await this.getUserByEmail(email);
+
     if (!user || !user.password) {
       return null;
     }
@@ -69,6 +70,9 @@ export class UserService {
     if (!isValidPassword) {
       return null;
     }
+
+    // Exclude password from returned user object
+    const { password: _password, ...userWithoutPassword } = user;
 
     const token = jwt.sign(
       { userId: user.id, email: user.email },
@@ -79,7 +83,6 @@ export class UserService {
     return {
       user: {
         ...user,
-        password: undefined // Remove password from response
       } as UserEntity,
       token
     };

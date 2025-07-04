@@ -1,7 +1,6 @@
-import { resetPosts } from './../config/database';
 import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
-import { PostService } from '../services/PostService';
+import { PostService } from '../services';
 
 class PostController {
   private postService: PostService;
@@ -134,17 +133,17 @@ class PostController {
   };
 
   // RESET /api/v1/posts/reset
-  resetPosts = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      await resetPosts();
-      res.json({
-        success: true,
-        message: 'Posts reset successfully'
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
+  // resetPosts = async (req: Request, res: Response, next: NextFunction) => {
+  //   try {
+  //     await resetPosts();
+  //     res.json({
+  //       success: true,
+  //       message: 'Posts reset successfully'
+  //     });
+  //   } catch (error) {
+  //     next(error);
+  //   }
+  // };
 
   // GET /api/v1/posts/category/:categoryId
   getPostsByCategory = async (req: Request, res: Response, next: NextFunction) => {

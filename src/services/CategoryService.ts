@@ -1,6 +1,6 @@
 import { Repository } from 'typeorm';
 import { AppDataSource } from '../config/ormconfig';
-import { CategoryEntity } from '../entities/CategoryEntity';
+import { CategoryEntity } from '../entities';
 import { InterfaceCategory } from '../types';
 
 export class CategoryService {

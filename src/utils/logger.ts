@@ -1,79 +1,52 @@
-import winston from 'winston';
-import { Request, Response, NextFunction } from "express";
-import path from 'path';
 import fs from 'fs';
+import path from 'path';
 
-// Ensure logs directory exists
-const logsDir = path.join(process.cwd(), 'logs');
-if (!fs.existsSync(logsDir)) {
-  fs.mkdirSync(logsDir, { recursive: true });
-}
+export class Logger {
+  private logDir: string;
 
-// Custom log format
-const logFormat = winston.format.combine(
-  winston.format.timestamp({
-    format: 'YYYY-MM-DD HH:mm:ss'
-  }),
-  winston.format.errors({ stack: true }),
-  winston.format.json(),
-  winston.format.prettyPrint()
-);
+  constructor() {
+    this.logDir = path.join(process.cwd(), 'logs');
+    if (!fs.existsSync(this.logDir)) {
+      fs.mkdirSync(this.logDir, { recursive: true });
+    }
+  }
 
-// Create logger
-export const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL || 'info',
-  format: logFormat,
-  defaultMeta: { service: 'db-express-sqlite' },
-  transports: [
-    // Error log file
-    new winston.transports.File({
-      filename: path.join(logsDir, 'error.log'),
-      level: 'error',
-      maxsize: 5242880, // 5MB
-      maxFiles: 5,
-    }),
-    // Combined log file
-    new winston.transports.File({
-      filename: path.join(logsDir, 'combined.log'),
-      maxsize: 5242880, // 5MB
-      maxFiles: 5,
-    }),
-    // Console transport for development
-    ...(process.env.NODE_ENV !== 'production'
-      ? [
-          new winston.transports.Console({
-            format: winston.format.combine(
-              winston.format.colorize(),
-              winston.format.simple()
-            ),
-          }),
-        ]
-      : []),
-  ],
-});
-
-// Request logging middleware
-export const requestLogger = (req: Request, res: Response, next: NextFunction) => {
-  const start = Date.now();
-  
-  res.on('finish', () => {
-    const duration = Date.now() - start;
-    const logData = {
-      method: req.method,
-      url: req.originalUrl,
-      status: res.statusCode,
-      duration: `${duration}ms`,
-      ip: req.ip,
-      userAgent: req.get('User-Agent'),
-      timestamp: new Date().toISOString()
+  private writeLog(level: string, message: string, meta?: any) {
+    const timestamp = new Date().toISOString();
+    const logEntry = {
+      timestamp,
+      level,
+      message,
+      ...(meta && { meta }),
     };
 
-    if (res.statusCode >= 400) {
-      logger.error(logData);
-    } else {
-      logger.info(logData);
-    }
-  });
+    const logString = JSON.stringify(logEntry) + '\n';
 
-  next();
-};
+    // Write to console
+    console.log(logString);
+
+    // Write to file
+    const logFile = path.join(this.logDir, `${new Date().toISOString().split('T')[0]}.log`);
+    fs.appendFileSync(logFile, logString);
+  }
+
+  info(message: string, meta?: any) {
+    this.writeLog('INFO', message, meta);
+  }
+
+  error(message: string, meta?: any) {
+    this.writeLog('ERROR', message, meta);
+  }
+
+  warn(message: string, meta?: any) {
+    this.writeLog('WARN', message, meta);
+  }
+
+  debug(message: string, meta?: any) {
+    if (process.env.NODE_ENV === 'development') {
+      this.writeLog('DEBUG', message, meta);
+    }
+  }
+}
+
+export const logger = new Logger();
