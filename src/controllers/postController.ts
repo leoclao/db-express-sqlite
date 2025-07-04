@@ -1,289 +1,179 @@
-import { Request, Response, RequestHandler } from "express";
-import {
-  createPostModel,
-  updatePostModel,
-  getPostsModel,
-  getPostsByIdModel,
-  deletePostModel,
-  resetPostsModel,
-  getPostsByCategoryIdModel,
-  getLatestPostsModel,
-  getPostsByTypeModel
-} from "../models/postModel";
-import { getCategoryById } from "../models/categoryModel";
-import { getUserById } from "../models/userModel";
-import { getCategories } from "../models/categoryModel";
-import { InterfacePost } from "../types";
+import { Request, Response, NextFunction } from 'express';
+import { validationResult } from 'express-validator';
+import { PostService } from '../services';
 
-export const getAllPostsController = async (req: Request, res: Response) => {
-  const { limit = 10, offset = 0, sort = 'createdAt', order = 'DESC' } = req.query;
-  const parsedLimit = Number(limit) || 10;
-  const parsedOffset = Number(offset) || 0;
-  const parsedSort = typeof sort === 'string' ? sort : 'createdAt';
-  const parsedOrder = (typeof order === 'string' && ['ASC', 'DESC'].includes(order.toUpperCase()))
-    ? order.toUpperCase()
-    : 'DESC';
-  
-  try {
-    const posts = await getPostsModel(parsedLimit, parsedOffset, parsedSort, parsedOrder);
-    res.json(posts);
-  } catch (error) {
-    res
-      .status(500)
-      .json({
-        error: "Internal server error",
-        details: (error as Error).message,
-      });
+class PostController {
+  private postService: PostService;
+
+  constructor() {
+    this.postService = new PostService();
   }
-};
 
-export const getPostsByIdController = async (req: Request, res: Response) => {
-  try {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
-      res.status(400).json({ error: "Invalid post ID" });
-      return;
-    }
-    const postsId = await getPostsByIdModel(id);
-    res.json(postsId);
-  } catch (error) {
-    res
-      .status(500)
-      .json({
-        error: "Internal server error",
-        details: (error as Error).message,
-      });
-  }
-};
+  // GET /api/v1/posts
+  getAllPosts = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const search = req.query.search as string;
 
-export const createPostController: RequestHandler = async (req: Request, res: Response): Promise<void> => {
-  const post: InterfacePost = req.body;
-  try {
-    if (
-      !post.slug ||
-      !post.title ||
-      !post.categoryId ||
-      !post.excerpt ||
-      !post.content ||
-      !post.createdAt ||
-      !post.userId ||
-      !post.type
-    ) {
-      res
-        .status(400)
-        .json({
-          error:
-            "slug, title, categoryId, excerpt, content, createdAt, userId, and type are required",
-        });
-      return;
-    }
-    if (!["about", "blog", "event", "service"].includes(post.type)) {
-      res
-        .status(400)
-        .json({
-          error: "Invalid type, must be about, blog, event, or service",
-        });
-      return;
-    }
-    const category = await getCategoryById(post.categoryId);
-    if (!category) {
-      res.status(400).json({ error: "Category not found" });
-      return;
-    }
-    const user = await getUserById(post.userId);
-    if (!user) {
-      res.status(400).json({ error: "User not found" });
-      return;
-    }
-    const postId = await createPostModel(post);
-    res.status(201).json({ message: "Post created", postId });
-  } catch (error: any) {
-    if (error.message.includes("SQLITE_CONSTRAINT: UNIQUE constraint failed")) {
-      res.status(400).json({ error: "Slug already exists" });
-      return;
-    }
-    res
-      .status(500)
-      .json({ error: "Internal server error", details: error.message });
-  }
-};
-
-export const updatePostController: RequestHandler = async (req: Request, res: Response): Promise<void> => {
-  const id = parseInt(req.params.id, 10);
-  const post: Partial<InterfacePost> = req.body;
-
-  try {
-    if (isNaN(id)) {
-      res.status(400).json({ error: "Invalid post ID" });
-      return;
-    }
-
-    const existingPost = await getPostsByIdModel(id);
-    if (!existingPost) {
-      res.status(404).json({ error: "Post not found" });
-      return;
-    }
-
-    // Optional: validate fields if needed
-    if (post.categoryId) {
-      const category = await getCategoryById(post.categoryId);
-      if (!category) {
-        res.status(400).json({ error: "Category not found" });
-        return;
+      let result;
+      if (search) {
+        result = await this.postService.searchPosts(search, page, limit);
+      } else {
+        result = await this.postService.getAllPosts(page, limit);
       }
-    }
-    if (post.userId) {
-      const user = await getUserById(post.userId);
-      if (!user) {
-        res.status(400).json({ error: "User not found" });
-        return;
-      }
-    }
-    if (post.type && !["about", "blog", "event", "service"].includes(post.type)) {
-      res.status(400).json({ error: "Invalid type, must be about, blog, event, or service" });
-      return;
-    }
 
-    const changes = await updatePostModel(id, post);
-    if (!changes || (typeof changes === 'object' && Object.keys(changes).length === 0)) {
-      res.status(400).json({ error: "No changes made" });
-      return;
-    }
-
-    res.json({ message: "Post updated" });
-  } catch (error: any) {
-    if (error.message?.includes("SQLITE_CONSTRAINT: UNIQUE constraint failed")) {
-      res.status(400).json({ error: "Slug already exists" });
-      return;
-    }
-    res.status(500).json({ error: "Internal server error", details: error.message });
-  }
-};
-
-export const deletePostController: RequestHandler = async (req: Request, res: Response): Promise<void> => {
-  const id = parseInt(req.params.id, 10);
-  try {
-    if (isNaN(id)) {
-      res.status(400).json({ error: "Invalid post ID" });
-      return;
-    }
-    const changes = await deletePostModel(id);
-    if (changes.affected || changes.affected === 0 || changes.raw || changes.raw === 0) {
-      res.status(404).json({ error: "Post not found" });
-      return;
-    }
-    res.json({ message: "Post deleted" });
-  } catch (error) {
-    res
-      .status(500)
-      .json({
-        error: "Internal server error",
-        details: (error as Error).message,
+      res.json({
+        success: true,
+        data: result,
+        message: 'Posts retrieved successfully'
       });
-  }
-};
-
-export const resetAllPostsController = async (req: Request, res: Response) => {
-  try {
-    await resetPostsModel();
-    res.json({ message: "All posts reset successfully" });
-  } catch (error) {
-    res
-      .status(500)
-      .json({
-        error: "Internal server error",
-        details: (error as Error).message,
-      });
-  }
-};
-
-export const getPostsByCategoryController: RequestHandler = async (req: Request, res: Response): Promise<void> => {
-  const categoryId = parseInt(req.params.categoryId, 10);
-  try {
-    if (isNaN(categoryId)) {
-      res.status(400).json({ error: "Invalid category ID" });
-      return;
+    } catch (error) {
+      next(error);
     }
-    const category = await getCategoryById(categoryId);
-    if (!category) {
-      res.status(404).json({ error: "Category not found" });
-      return;
-    }
-    const posts = await getPostsByCategoryIdModel(categoryId);
-    res.json(posts);
-  } catch (error) {
-    res
-      .status(500)
-      .json({
-        error: "Internal server error",
-        details: (error as Error).message,
-      });
-  }
-};
+  };
 
-export const getLatestPostsController: RequestHandler = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const limit = parseInt(req.query.limit as string, 10) || 5;
-    if (isNaN(limit) || limit < 1) {
-      res.status(400).json({ error: "Invalid limit parameter" });
-      return;
-    }
-    const posts = await getLatestPostsModel(limit);
-    res.json(posts);
-  } catch (error) {
-    res
-      .status(500)
-      .json({
-        error: "Internal server error",
-        details: (error as Error).message,
-      });
-  }
-};
+  // GET /api/v1/posts/:id
+  getPostById = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id = parseInt(req.params.id);
+      const post = await this.postService.getPostById(id);
 
-export const getPostsByTypeController: RequestHandler = async (req: Request, res: Response): Promise<void> => {
-  const { type } = req.params;
-  try {
-    if (!["about", "blog", "event", "service"].includes(type)) {
-      res
-        .status(400)
-        .json({
-          error: "Invalid type, must be about, blog, event, or service",
+      if (!post) {
+        return res.status(404).json({
+          success: false,
+          message: 'Post not found'
         });
-      return;
-    }
-    const posts = await getPostsByTypeModel(type);
-    res.json(posts);
-  } catch (error) {
-    res
-      .status(500)
-      .json({
-        error: "Internal server error",
-        details: (error as Error).message,
-      });
-  }
-};
+      }
 
-export const getHomeDataController: RequestHandler = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const limit = parseInt(req.query.limit as string, 10) || 5;
-    if (isNaN(limit) || limit < 1) {
-      res.status(400).json({ error: "Invalid limit parameter" });
-      return;
-    }
-    const latestBlogs = await getPostsByTypeModel("blog");
-    const latestEvents = await getPostsByTypeModel("event");
-    const categories = await getCategories();
-    res.json({
-      latestBlogs: latestBlogs.slice(0, limit),
-      latestEvents: latestEvents.slice(0, limit),
-      categories,
-    });
-  } catch (error) {
-    res
-      .status(500)
-      .json({
-        error: "Internal server error",
-        details: (error as Error).message,
+      res.json({
+        success: true,
+        data: post,
+        message: 'Post retrieved successfully'
       });
-  }
-};
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // POST /api/v1/posts
+  createPost = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          errors: errors.array()
+        });
+      }
+
+      const post = await this.postService.createPost(req.body);
+
+      res.status(201).json({
+        success: true,
+        data: post,
+        message: 'Post created successfully'
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // PUT /api/v1/posts/:id
+  updatePost = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          errors: errors.array()
+        });
+      }
+
+      const id = parseInt(req.params.id);
+      const post = await this.postService.updatePost(id, req.body);
+
+      if (!post) {
+        return res.status(404).json({
+          success: false,
+          message: 'Post not found'
+        });
+      }
+
+      res.json({
+        success: true,
+        data: post,
+        message: 'Post updated successfully'
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // DELETE /api/v1/posts/:id
+  deletePost = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await this.postService.deletePost(id);
+
+      if (!deleted) {
+        return res.status(404).json({
+          success: false,
+          message: 'Post not found'
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Post deleted successfully'
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // RESET /api/v1/posts/reset
+  // resetPosts = async (req: Request, res: Response, next: NextFunction) => {
+  //   try {
+  //     await resetPosts();
+  //     res.json({
+  //       success: true,
+  //       message: 'Posts reset successfully'
+  //     });
+  //   } catch (error) {
+  //     next(error);
+  //   }
+  // };
+
+  // GET /api/v1/posts/category/:categoryId
+  getPostsByCategory = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const categoryId = parseInt(req.params.categoryId);
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+
+      const result = await this.postService.getPostsByCategory(categoryId, page, limit);
+
+      res.json({
+        success: true,
+        data: result,
+        message: 'Posts retrieved successfully'
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+}
+
+export const postController = new PostController();
+// Export methods for direct import
+export const getAllPosts = postController.getAllPosts;
+export const getPostById = postController.getPostById;
+export const createPost = postController.createPost;
+export const updatePost = postController.updatePost;
+export const deletePost = postController.deletePost;
+export const resetPosts = postController.resetPosts;
+export const getPostsByCategory = postController.getPostsByCategory;
+export const getLatestPosts = postController.getLatestPosts;
+// export const getPostsByType = postController.getPostsByType;
+// export const getHomePosts = postController.getHomePosts;

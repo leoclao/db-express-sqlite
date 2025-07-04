@@ -1,77 +1,76 @@
-import express, { Application } from 'express';
-import dotenv from 'dotenv';
-import helmet from 'helmet';
-import cors from 'cors';
-import { AppDataSource } from './config/ormconfig';
-import userRoutes from './routes/v1/userRoutes';
-import postRoutes from './routes/v1/postRoutes';
-import categoryRoutes from './routes/v1/categoryRoutes';
-import contactRoutes from './routes/v1/contactRoutes';
-import { errorHandler } from './middlewares/errorHandler';
-import swaggerUi from 'swagger-ui-express';
-import { swaggerDocs } from './swagger';
+import express, { Application } from "express";
+import dotenv from "dotenv";
+import helmet from "helmet";
+import cors from "cors";
+import { AppDataSource } from "./config/ormconfig";
+import { apiRoutes } from "./routes";
+import { globalErrorHandler, notFoundHandler, rateLimiter } from "./middleware";
+import { requestLogger, logger } from "./utils/logger";
 
-// dotenv.config();
-const envFile = `.env.${process.env.NODE_ENV || 'development'}`;
-dotenv.config({ path: envFile });
+dotenv.config();
 
 const app: Application = express();
-const PORT = process.env.PORT || 3001;
-const ORIGIN = process.env.ORIGIN || 'http://localhost:3000';
 
-// Thêm helmet để bảo mật
+// Security middleware
 app.use(helmet());
+app.use(cors());
+app.use(rateLimiter);
 
-// Cấu hình CORS
-app.use(cors({
-  origin: ORIGIN, // Cho phép frontend tại localhost:3000
-  // methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Các phương thức HTTP được phép
-  methods: ['GET'], // Các phương thức HTTP được phép
-  allowedHeaders: ['Content-Type', 'Authorization'], // Các header được phép
-}));
-// app.options('*', cors()); // Xử lý yêu cầu OPTIONS (preflight)
-app.options('/api/v1/posts', cors({
-  origin: ORIGIN,
-  methods: ['GET'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
-app.options('/api/v1/users', cors({
-  origin: ORIGIN,
-  methods: ['GET'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
-app.options('/api/v1/categories', cors({
-  origin: ORIGIN,
-  methods: ['GET'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
-app.options('/api/v1/contact', cors({
-  origin: ORIGIN,
-  methods: ['POST'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+// Request logging
+app.use(requestLogger);
 
-app.use(express.json());
+// Body parsing middleware
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-app.use('/api/v1/users', userRoutes);
-app.use('/api/v1/posts', postRoutes);
-app.use('/api/v1/categories', categoryRoutes);
-app.use('/api/v1/contact', contactRoutes);
+// API routes
+app.use("/api/v1", apiRoutes);
 
-app.use(errorHandler);
+// Root endpoint
+app.get("/", (req, res) => {
+  res.json({
+    message: "Welcome to DB Express SQLite API",
+    version: "1.0.0",
+    docs: "/api/v1/docs",
+    health: "/api/v1/health",
+  });
+});
 
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+// Routes
+app.use(apiRoutes);
 
-const startServer = async () => {
-  try {
-    await AppDataSource.initialize();
-    // await initDatabase(); // Nếu đã chuyển hoàn toàn sang TypeORM, có thể bỏ dòng này
+// 404 handler
+app.use("*", notFoundHandler);
+
+// Global error handler
+app.use(globalErrorHandler);
+
+// Start server
+const PORT = process.env.PORT || 3000;
+
+AppDataSource.initialize()
+  .then(() => {
+    logger.info("Database connected successfully");
+
     app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+      logger.info(`Server is running on port ${PORT}`);
+      logger.info(`Environment: ${process.env.NODE_ENV || "development"}`);
     });
-  } catch (error) {
-    console.error('Failed to start server:', error);
-  }
-};
+  })
+  .catch((error) => {
+    logger.error("Database connection failed:", error);
+    process.exit(1);
+  });
 
-startServer();
+// Graceful shutdown
+process.on("SIGTERM", () => {
+  logger.info("SIGTERM received, shutting down gracefully");
+  process.exit(0);
+});
+
+process.on("SIGINT", () => {
+  logger.info("SIGINT received, shutting down gracefully");
+  process.exit(0);
+});
+
+export default app;
