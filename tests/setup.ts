@@ -1,9 +1,9 @@
-import { AppDataSource } from '../src/config/ormconfig';
+import { DatabaseManager } from "../src/utils/DatabaseManager";
 
 beforeAll(async () => {
-  await AppDataSource.initialize();
+  await DatabaseManager.initialize();
 });
 
 afterAll(async () => {
-  await AppDataSource.destroy();
+  // await DatabaseManager.destroy();
 });

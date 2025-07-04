@@ -12,7 +12,7 @@ import {
   // getHomePosts
 } from '../../controllers/postController';
 import { validateCreatePost, validateUpdatePost } from '../../middleware/validators/postValidator';
-import { catchAsync } from '../../middleware/errorHandler';
+import { catchAsync } from '../../middleware/error/errorHandler';
 
 const router = Router();
 

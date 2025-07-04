@@ -16,7 +16,7 @@
  */
 
 import express from 'express';
-import { authMiddleware } from "../../middleware/authMiddleware";
+import { authMiddleware } from "../../middleware/auth/authMiddleware";
 import { getAllCategories, createCategory } from '../../controllers/categoryController';
 
 /**

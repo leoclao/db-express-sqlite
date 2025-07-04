@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { getAllUsers, createUser, getUserById, updateUser, deleteUser } from '../../controllers/userController';
 import { validateCreateUser, validateUpdateUser } from '../../middleware/validators/userValidator';
-import { catchAsync } from '../../middleware/errorHandler';
+import { catchAsync } from '../../middleware/error/errorHandler';
 
 const router = Router();
 

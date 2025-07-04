@@ -10,7 +10,7 @@
  * @see {@link ../../middlewares/authMiddleware}
  */
 import express, { Router } from 'express';
-import { authMiddleware } from "../../middleware/authMiddleware";
+import { authMiddleware } from "../../middleware/auth/authMiddleware";
 import { createContact } from '../../controllers/contactController';
 
 /**

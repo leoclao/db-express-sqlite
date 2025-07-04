@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from 'express';
-import { logger } from '../utils/logger';
 
 export interface RequestWithTiming extends Request {
   startTime?: number;
@@ -17,23 +16,17 @@ export const performanceMiddleware = (
     const { method, url, ip } = req;
     const { statusCode } = res;
 
-    logger.info('Request completed', {
-      method,
-      url,
-      statusCode,
-      duration,
-      ip,
-      userAgent: req.get('User-Agent')
-    });
+    // Console log thay vì logger dependency
+    console.log(`${method} ${url} - ${statusCode} - ${duration}ms - ${ip}`);
 
     // Log slow requests
     if (duration > 1000) {
-      logger.warn('Slow request detected', {
-        method,
-        url,
-        duration,
-        statusCode
-      });
+      console.warn(`⚠️  Slow request: ${method} ${url} - ${duration}ms`);
+    }
+
+    // Log errors
+    if (statusCode >= 400) {
+      console.error(`❌ Error: ${method} ${url} - ${statusCode}`);
     }
   });
 
