@@ -1,25 +1,33 @@
 import rateLimit from 'express-rate-limit';
+import { sendError } from '../utils/responseFormatter';
 
-// Rate limiter cho API thông thường
-export const apiRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
-  message: {
-    success: false,
-    error: 'Too many requests from this IP, please try again later.',
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+const createRateLimiter = (windowMs: number, max: number, message: string) => {
+  return rateLimit({
+    windowMs,
+    max,
+    message: { success: false, error: message },
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (req, res) => {
+      sendError(res, message, 429);
+    }
+  });
+};
 
-// Rate limiter nghiêm ngặt hơn cho auth endpoints
-export const authRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Chỉ 5 lần đăng nhập trong 15 phút
-  message: {
-    success: false,
-    error: 'Too many authentication attempts, please try again later.',
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+export const generalRateLimiter = createRateLimiter(
+  15 * 60 * 1000, // 15 minutes
+  100, // 100 requests per window
+  'Too many requests from this IP, please try again later.'
+);
+
+export const authRateLimiter = createRateLimiter(
+  15 * 60 * 1000, // 15 minutes
+  5, // 5 attempts per window
+  'Too many authentication attempts, please try again later.'
+);
+
+export const apiRateLimiter = createRateLimiter(
+  60 * 1000, // 1 minute
+  20, // 20 requests per minute
+  'API rate limit exceeded, please slow down.'
+);

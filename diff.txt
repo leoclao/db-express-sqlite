@@ -1,0 +1,877 @@
+diff --git a/src/middleware/auth/authMiddleware.ts b/src/middleware/auth/authMiddleware.ts
+index d357f76..4547877 100644
+--- a/src/middleware/auth/authMiddleware.ts
++++ b/src/middleware/auth/authMiddleware.ts
+@@ -1,11 +1,13 @@
+ import { Request, Response, NextFunction } from 'express';
+ import jwt from 'jsonwebtoken';
++import { sendError } from '../utils/responseFormatter';
+ 
+ export interface AuthRequest extends Request {
+   user?: {
+     id: string;
+     email: string;
+-    role?: string;
++    role: string;
++    permissions: string[];
+   };
+ }
+ 
+@@ -17,20 +19,14 @@ export const authMiddleware = (
+   const token = req.header('Authorization')?.replace('Bearer ', '');
+ 
+   if (!token) {
+-    res.status(401).json({ 
+-      success: false, 
+-      error: 'Access token required' 
+-    });
++    sendError(res, 'Access token required', 401);
+     return;
+   }
+ 
+   const jwtSecret = process.env.JWT_SECRET;
+   if (!jwtSecret) {
+     console.error('JWT_SECRET is not defined');
+-    res.status(500).json({ 
+-      success: false, 
+-      error: 'Server configuration error' 
+-    });
++    sendError(res, 'Server configuration error', 500);
+     return;
+   }
+ 
+@@ -39,32 +35,12 @@ export const authMiddleware = (
+     req.user = decoded;
+     next();
+   } catch (error) {
+-    res.status(401).json({ 
+-      success: false, 
+-      error: 'Invalid or expired token' 
+-    });
+-  }
+-};
+-
+-// Middleware cho role-based authentication
+-export const requireRole = (roles: string[]) => {
+-  return (req: AuthRequest, res: Response, next: NextFunction): void => {
+-    if (!req.user) {
+-      res.status(401).json({ 
+-        success: false, 
+-        error: 'Authentication required' 
+-      });
+-      return;
+-    }
+-
+-    if (!roles.includes(req.user.role)) {
+-      res.status(403).json({ 
+-        success: false, 
+-        error: 'Insufficient permissions' 
+-      });
+-      return;
++    if (error instanceof jwt.TokenExpiredError) {
++      sendError(res, 'Token expired', 401);
++    } else if (error instanceof jwt.JsonWebTokenError) {
++      sendError(res, 'Invalid token', 401);
++    } else {
++      sendError(res, 'Authentication failed', 401);
+     }
+-
+-    next();
+-  };
++  }
+ };
+\ No newline at end of file
+diff --git a/src/middleware/auth/roleMiddleware.ts b/src/middleware/auth/roleMiddleware.ts
+index e69de29..2ec6c3b 100644
+--- a/src/middleware/auth/roleMiddleware.ts
++++ b/src/middleware/auth/roleMiddleware.ts
+@@ -0,0 +1,39 @@
++import { Response, NextFunction } from 'express';
++import { AuthRequest } from './authMiddleware';
++import { sendError } from '../utils/responseFormatter';
++
++export const requireRole = (roles: string[]) => {
++  return (req: AuthRequest, res: Response, next: NextFunction): void => {
++    if (!req.user) {
++      sendError(res, 'Authentication required', 401);
++      return;
++    }
++
++    if (!roles.includes(req.user.role)) {
++      sendError(res, 'Insufficient permissions', 403);
++      return;
++    }
++
++    next();
++  };
++};
++
++export const requirePermission = (permissions: string[]) => {
++  return (req: AuthRequest, res: Response, next: NextFunction): void => {
++    if (!req.user) {
++      sendError(res, 'Authentication required', 401);
++      return;
++    }
++
++    const hasPermission = permissions.some(permission => 
++      req.user!.permissions.includes(permission)
++    );
++
++    if (!hasPermission) {
++      sendError(res, 'Insufficient permissions', 403);
++      return;
++    }
++
++    next();
++  };
++};
+\ No newline at end of file
+diff --git a/src/middleware/error/customErrors.ts b/src/middleware/error/customErrors.ts
+new file mode 100644
+index 0000000..ac1df26
+--- /dev/null
++++ b/src/middleware/error/customErrors.ts
+@@ -0,0 +1,65 @@
++export class AppError extends Error {
++  public readonly statusCode: number;
++  public readonly isOperational: boolean;
++  public readonly code?: string;
++
++  constructor(
++    message: string,
++    statusCode: number = 500,
++    isOperational: boolean = true,
++    code?: string
++  ) {
++    super(message);
++    this.statusCode = statusCode;
++    this.isOperational = isOperational;
++    this.code = code;
++
++    // Maintains proper stack trace for where our error was thrown
++    Error.captureStackTrace(this, this.constructor);
++  }
++}
++
++export class ValidationError extends AppError {
++  constructor(message: string, field?: string) {
++    super(message, 400, true, 'VALIDATION_ERROR');
++    this.name = 'ValidationError';
++    if (field) {
++      this.message = `${field}: ${message}`;
++    }
++  }
++}
++
++export class AuthenticationError extends AppError {
++  constructor(message: string = 'Authentication failed') {
++    super(message, 401, true, 'AUTHENTICATION_ERROR');
++    this.name = 'AuthenticationError';
++  }
++}
++
++export class AuthorizationError extends AppError {
++  constructor(message: string = 'Insufficient permissions') {
++    super(message, 403, true, 'AUTHORIZATION_ERROR');
++    this.name = 'AuthorizationError';
++  }
++}
++
++export class NotFoundError extends AppError {
++  constructor(resource: string = 'Resource') {
++    super(`${resource} not found`, 404, true, 'NOT_FOUND_ERROR');
++    this.name = 'NotFoundError';
++  }
++}
++
++export class ConflictError extends AppError {
++  constructor(message: string = 'Resource already exists') {
++    super(message, 409, true, 'CONFLICT_ERROR');
++    this.name = 'ConflictError';
++  }
++}
++
++export class RateLimitError extends AppError {
++  constructor(message: string = 'Too many requests') {
++    super(message, 429, true, 'RATE_LIMIT_ERROR');
++    this.name = 'RateLimitError';
++  }
++}
+\ No newline at end of file
+diff --git a/src/middleware/error/errorHandler.ts b/src/middleware/error/errorHandler.ts
+index 220268a..bec3671 100644
+--- a/src/middleware/error/errorHandler.ts
++++ b/src/middleware/error/errorHandler.ts
+@@ -1,50 +1,88 @@
+ import { Request, Response, NextFunction } from 'express';
++import { sendError } from '../utils/responseFormatter';
++import { logger } from '../utils/logger';
++import { AppError } from './customErrors';
+ 
+-export interface AppError extends Error {
++export interface ErrorWithCode extends Error {
+   statusCode?: number;
+   isOperational?: boolean;
++  code?: string | number;
++  keyPattern?: Record<string, any>;
++  keyValue?: Record<string, any>;
++  errors?: Record<string, any>;
+ }
+ 
+ export const errorHandler = (
+-  err: AppError | any,
++  err: ErrorWithCode,
+   req: Request,
+   res: Response,
+   next: NextFunction
+ ) => {
+   let statusCode = err.statusCode || 500;
+   let message = err.message || 'Internal Server Error';
++  let code = err.code;
+ 
+-  // Handle specific error types
++  // Handle different error types
+   if (err.name === 'ValidationError') {
+     statusCode = 400;
+     message = 'Validation Error';
++    code = 'VALIDATION_ERROR';
+   } else if (err.name === 'CastError') {
+     statusCode = 400;
+     message = 'Invalid ID format';
++    code = 'INVALID_ID';
+   } else if (err.code === 11000) {
+-    statusCode = 400;
++    statusCode = 409;
+     message = 'Duplicate field value';
++    code = 'DUPLICATE_FIELD';
++    
++    // Extract field name from MongoDB duplicate key error
++    if (err.keyPattern) {
++      const field = Object.keys(err.keyPattern)[0];
++      message = `${field} already exists`;
++    }
++  } else if (err.name === 'JsonWebTokenError') {
++    statusCode = 401;
++    message = 'Invalid token';
++    code = 'INVALID_TOKEN';
++  } else if (err.name === 'TokenExpiredError') {
++    statusCode = 401;
++    message = 'Token expired';
++    code = 'TOKEN_EXPIRED';
++  } else if (err.name === 'MulterError') {
++    statusCode = 400;
++    message = 'File upload error';
++    code = 'UPLOAD_ERROR';
+   }
+ 
+-  // Log error với context
+-  console.error(`Error ${statusCode}: ${message}`, {
++  // Log error with context
++  const errorContext = {
+     error: err.message,
+-    stack: err.stack,
++    statusCode,
++    code,
+     url: req.url,
+     method: req.method,
+     ip: req.ip,
+-    userAgent: req.get('User-Agent')
+-  });
++    userAgent: req.get('User-Agent'),
++    userId: (req as any).user?.id,
++    body: req.body,
++    params: req.params,
++    query: req.query
++  };
++
++  if (statusCode >= 500) {
++    logger.error('Server Error', errorContext, err);
++  } else {
++    logger.warn('Client Error', errorContext);
++  }
+ 
+   // Send error response
+-  res.status(statusCode).json({
+-    success: false,
+-    error: {
+-      message,
+-      ...(process.env.NODE_ENV === 'development' && { 
+-        stack: err.stack,
+-        details: err 
+-      }),
+-    },
+-  });
+-};
++  sendError(res, {
++    message,
++    code,
++    ...(process.env.NODE_ENV === 'development' && { 
++      stack: err.stack,
++      details: err 
++    }),
++  }, statusCode);
++};
+\ No newline at end of file
+diff --git a/src/middleware/error/index.ts b/src/middleware/error/index.ts
+index f8b76cb..d5199f2 100644
+--- a/src/middleware/error/index.ts
++++ b/src/middleware/error/index.ts
+@@ -1,2 +1,4 @@
++export * from './customErrors';
+ export * from './errorHandler';
+-export * from './notFoundHandler';
+\ No newline at end of file
++export * from './notFoundHandler';
++export * from './validationErrorHandler';
+\ No newline at end of file
+diff --git a/src/middleware/error/notFoundHandler.ts b/src/middleware/error/notFoundHandler.ts
+index 6ccf2fc..bce677f 100644
+--- a/src/middleware/error/notFoundHandler.ts
++++ b/src/middleware/error/notFoundHandler.ts
+@@ -1,10 +1,25 @@
+ import { Request, Response } from 'express';
++import { sendError } from '../utils/responseFormatter';
++import { logger } from '../utils/logger';
+ 
+ export const notFoundHandler = (req: Request, res: Response) => {
+-  res.status(404).json({
+-    success: false,
+-    error: {
+-      message: `Route ${req.originalUrl} not found`
+-    }
++  const message = `Route ${req.method} ${req.originalUrl} not found`;
++  
++  logger.warn('Route Not Found', {
++    method: req.method,
++    url: req.originalUrl,
++    ip: req.ip,
++    userAgent: req.get('User-Agent')
+   });
++
++  sendError(res, {
++    message,
++    code: 'ROUTE_NOT_FOUND',
++    availableRoutes: process.env.NODE_ENV === 'development' ? [
++      'GET /api/health',
++      'POST /api/auth/login',
++      'GET /api/users',
++      // Add your routes here for development
++    ] : undefined
++  }, 404);
+ };
+\ No newline at end of file
+diff --git a/src/middleware/error/validationErrorHandler.ts b/src/middleware/error/validationErrorHandler.ts
+new file mode 100644
+index 0000000..47f3dc3
+--- /dev/null
++++ b/src/middleware/error/validationErrorHandler.ts
+@@ -0,0 +1,65 @@
++import { Request, Response, NextFunction } from 'express';
++import { validationResult } from 'express-validator';
++import { sendError } from '../utils/responseFormatter';
++import { logger } from '../utils/logger';
++
++export const handleValidationErrors = (
++  req: Request,
++  res: Response,
++  next: NextFunction
++) => {
++  const errors = validationResult(req);
++  
++  if (!errors.isEmpty()) {
++    const formattedErrors = errors.array().map(error => ({
++      field: error.param,
++      message: error.msg,
++      value: error.value,
++      location: error.location
++    }));
++    
++    logger.warn('Validation Error', {
++      url: req.url,
++      method: req.method,
++      errors: formattedErrors,
++      body: req.body
++    });
++    
++    sendError(res, {
++      message: 'Validation failed',
++      code: 'VALIDATION_ERROR',
++      errors: formattedErrors
++    }, 400);
++    return;
++  }
++  
++  next();
++};
++
++// Utility to validate required fields
++export const validateRequired = (fields: string[]) => {
++  return (req: Request, res: Response, next: NextFunction) => {
++    const missingFields = fields.filter(field => {
++      const value = req.body[field];
++      return value === undefined || value === null || value === '';
++    });
++    
++    if (missingFields.length > 0) {
++      logger.warn('Missing Required Fields', {
++        url: req.url,
++        method: req.method,
++        missingFields,
++        body: req.body
++      });
++      
++      sendError(res, {
++        message: 'Missing required fields',
++        code: 'MISSING_REQUIRED_FIELDS',
++        missingFields
++      }, 400);
++      return;
++    }
++    
++    next();
++  };
++};
+diff --git a/src/middleware/index.ts b/src/middleware/index.ts
+index f5f3a32..8f58308 100644
+--- a/src/middleware/index.ts
++++ b/src/middleware/index.ts
+@@ -1,5 +1,7 @@
+-export * from './error/errorHandler';
+-export * from './auth/authMiddleware';
+-export * from './security/rateLimiter';
+-export * from './logging/performanceMonitor';
+-export * from './validators/common';
+\ No newline at end of file
++// export * from './error/errorHandler';
++// export * from './auth/authMiddleware';
++// export * from './security/rateLimiter';
++// export * from './logging/performanceMonitor';
++// export * from './validators/common';
++export * from './utils';
++export * from './error';
+\ No newline at end of file
+diff --git a/src/middleware/logging/performanceMonitor.ts b/src/middleware/logging/performanceMonitor.ts
+new file mode 100644
+index 0000000..869378e
+--- /dev/null
++++ b/src/middleware/logging/performanceMonitor.ts
+@@ -0,0 +1,50 @@
++import { Request, Response, NextFunction } from 'express';
++
++export interface RequestWithTiming extends Request {
++  startTime?: number;
++}
++
++export const performanceMonitor = (
++  req: RequestWithTiming,
++  res: Response,
++  next: NextFunction
++) => {
++  req.startTime = Date.now();
++
++  res.on('finish', () => {
++    const duration = Date.now() - req.startTime!;
++    const { method, url, ip } = req;
++    const { statusCode } = res;
++
++    // Log request completion
++    console.log(`${method} ${url} - ${statusCode} - ${duration}ms - ${ip}`);
++
++    // Log performance metrics
++    const logData = {
++      method,
++      url,
++      statusCode,
++      duration,
++      ip,
++      userAgent: req.get('User-Agent'),
++      timestamp: new Date().toISOString()
++    };
++
++    // Log slow requests
++    if (duration > 1000) {
++      console.warn('🐌 Slow request detected:', logData);
++    }
++
++    // Log errors
++    if (statusCode >= 400) {
++      console.error('❌ Error response:', logData);
++    }
++
++    // Log high traffic
++    if (duration > 5000) {
++      console.error('🚨 Very slow request:', logData);
++    }
++  });
++
++  next();
++};
+\ No newline at end of file
+diff --git a/src/middleware/security/corsMiddleware.ts b/src/middleware/security/corsMiddleware.ts
+index f076cba..2941beb 100644
+--- a/src/middleware/security/corsMiddleware.ts
++++ b/src/middleware/security/corsMiddleware.ts
+@@ -1,6 +1,24 @@
+-import cors from "cors";
++import cors from 'cors';
++
++const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
++  'http://localhost:3000',
++  'http://localhost:3001',
++  'https://yourdomain.com'
++];
+ 
+ export const corsMiddleware = cors({
+-  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
++  origin: (origin, callback) => {
++    // Allow requests with no origin (mobile apps, etc.)
++    if (!origin) return callback(null, true);
++    
++    if (allowedOrigins.includes(origin)) {
++      callback(null, true);
++    } else {
++      callback(new Error('Not allowed by CORS'));
++    }
++  },
+   credentials: true,
++  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
++  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
++  exposedHeaders: ['X-Total-Count', 'X-Page-Count']
+ });
+\ No newline at end of file
+diff --git a/src/middleware/security/rateLimiter.ts b/src/middleware/security/rateLimiter.ts
+index 4479fa6..7732808 100644
+--- a/src/middleware/security/rateLimiter.ts
++++ b/src/middleware/security/rateLimiter.ts
+@@ -1,25 +1,33 @@
+ import rateLimit from 'express-rate-limit';
++import { sendError } from '../utils/responseFormatter';
+ 
+-// Rate limiter cho API thông thường
+-export const apiRateLimiter = rateLimit({
+-  windowMs: 15 * 60 * 1000, // 15 minutes
+-  max: 100,
+-  message: {
+-    success: false,
+-    error: 'Too many requests from this IP, please try again later.',
+-  },
+-  standardHeaders: true,
+-  legacyHeaders: false,
+-});
++const createRateLimiter = (windowMs: number, max: number, message: string) => {
++  return rateLimit({
++    windowMs,
++    max,
++    message: { success: false, error: message },
++    standardHeaders: true,
++    legacyHeaders: false,
++    handler: (req, res) => {
++      sendError(res, message, 429);
++    }
++  });
++};
+ 
+-// Rate limiter nghiêm ngặt hơn cho auth endpoints
+-export const authRateLimiter = rateLimit({
+-  windowMs: 15 * 60 * 1000, // 15 minutes
+-  max: 5, // Chỉ 5 lần đăng nhập trong 15 phút
+-  message: {
+-    success: false,
+-    error: 'Too many authentication attempts, please try again later.',
+-  },
+-  standardHeaders: true,
+-  legacyHeaders: false,
+-});
+\ No newline at end of file
++export const generalRateLimiter = createRateLimiter(
++  15 * 60 * 1000, // 15 minutes
++  100, // 100 requests per window
++  'Too many requests from this IP, please try again later.'
++);
++
++export const authRateLimiter = createRateLimiter(
++  15 * 60 * 1000, // 15 minutes
++  5, // 5 attempts per window
++  'Too many authentication attempts, please try again later.'
++);
++
++export const apiRateLimiter = createRateLimiter(
++  60 * 1000, // 1 minute
++  20, // 20 requests per minute
++  'API rate limit exceeded, please slow down.'
++);
+\ No newline at end of file
+diff --git a/src/middleware/utils/asyncHandler.ts b/src/middleware/utils/asyncHandler.ts
+new file mode 100644
+index 0000000..dce6fb1
+--- /dev/null
++++ b/src/middleware/utils/asyncHandler.ts
+@@ -0,0 +1,16 @@
++import { Request, Response, NextFunction } from 'express';
++
++export const asyncHandler = (fn: Function) => {
++  return (req: Request, res: Response, next: NextFunction) => {
++    Promise.resolve(fn(req, res, next)).catch(next);
++  };
++};
++
++// Alternative with better typing
++export const asyncWrapper = <T extends Request = Request>(
++  fn: (req: T, res: Response, next: NextFunction) => Promise<any>
++) => {
++  return (req: T, res: Response, next: NextFunction) => {
++    fn(req, res, next).catch(next);
++  };
++};
+diff --git a/src/middleware/utils/index.ts b/src/middleware/utils/index.ts
+new file mode 100644
+index 0000000..afc2053
+--- /dev/null
++++ b/src/middleware/utils/index.ts
+@@ -0,0 +1,3 @@
++export * from './asyncHandler';
++export * from './responseFormatter';
++export * from './logger';
+\ No newline at end of file
+diff --git a/src/middleware/utils/logger.ts b/src/middleware/utils/logger.ts
+new file mode 100644
+index 0000000..4fe39e1
+--- /dev/null
++++ b/src/middleware/utils/logger.ts
+@@ -0,0 +1,97 @@
++export enum LogLevel {
++  ERROR = 'error',
++  WARN = 'warn',
++  INFO = 'info',
++  DEBUG = 'debug'
++}
++
++export interface LogEntry {
++  level: LogLevel;
++  message: string;
++  timestamp: string;
++  context?: Record<string, any>;
++  stack?: string;
++}
++
++export class Logger {
++  private static instance: Logger;
++  private logLevel: LogLevel;
++
++  private constructor() {
++    this.logLevel = (process.env.LOG_LEVEL as LogLevel) || LogLevel.INFO;
++  }
++
++  public static getInstance(): Logger {
++    if (!Logger.instance) {
++      Logger.instance = new Logger();
++    }
++    return Logger.instance;
++  }
++
++  private shouldLog(level: LogLevel): boolean {
++    const levels = [LogLevel.ERROR, LogLevel.WARN, LogLevel.INFO, LogLevel.DEBUG];
++    return levels.indexOf(level) <= levels.indexOf(this.logLevel);
++  }
++
++  private formatLog(entry: LogEntry): string {
++    const { level, message, timestamp, context, stack } = entry;
++    let log = `[${timestamp}] ${level.toUpperCase()}: ${message}`;
++    
++    if (context && Object.keys(context).length > 0) {
++      log += `\nContext: ${JSON.stringify(context, null, 2)}`;
++    }
++    
++    if (stack) {
++      log += `\nStack: ${stack}`;
++    }
++    
++    return log;
++  }
++
++  private log(level: LogLevel, message: string, context?: Record<string, any>, stack?: string) {
++    if (!this.shouldLog(level)) return;
++
++    const entry: LogEntry = {
++      level,
++      message,
++      timestamp: new Date().toISOString(),
++      context,
++      stack
++    };
++
++    const formattedLog = this.formatLog(entry);
++    
++    switch (level) {
++      case LogLevel.ERROR:
++        console.error(formattedLog);
++        break;
++      case LogLevel.WARN:
++        console.warn(formattedLog);
++        break;
++      case LogLevel.INFO:
++        console.log(formattedLog);
++        break;
++      case LogLevel.DEBUG:
++        console.debug(formattedLog);
++        break;
++    }
++  }
++
++  public error(message: string, context?: Record<string, any>, error?: Error) {
++    this.log(LogLevel.ERROR, message, context, error?.stack);
++  }
++
++  public warn(message: string, context?: Record<string, any>) {
++    this.log(LogLevel.WARN, message, context);
++  }
++
++  public info(message: string, context?: Record<string, any>) {
++    this.log(LogLevel.INFO, message, context);
++  }
++
++  public debug(message: string, context?: Record<string, any>) {
++    this.log(LogLevel.DEBUG, message, context);
++  }
++}
++
++export const logger = Logger.getInstance();
+\ No newline at end of file
+diff --git a/src/middleware/utils/responseFormatter.ts b/src/middleware/utils/responseFormatter.ts
+new file mode 100644
+index 0000000..1333298
+--- /dev/null
++++ b/src/middleware/utils/responseFormatter.ts
+@@ -0,0 +1,78 @@
++import { Response } from 'express';
++
++export interface ApiResponse<T = any> {
++  success: boolean;
++  data?: T;
++  error?: string | object;
++  message?: string;
++  pagination?: {
++    page: number;
++    limit: number;
++    total: number;
++    totalPages: number;
++  };
++  meta?: {
++    timestamp: string;
++    requestId?: string;
++    version?: string;
++  };
++}
++
++export const sendSuccess = <T>(
++  res: Response,
++  data?: T,
++  message?: string,
++  statusCode = 200,
++  pagination?: ApiResponse['pagination']
++) => {
++  const response: ApiResponse<T> = {
++    success: true,
++    ...(data !== undefined && { data }),
++    ...(message && { message }),
++    ...(pagination && { pagination }),
++    meta: {
++      timestamp: new Date().toISOString(),
++      version: process.env.API_VERSION || '1.0.0'
++    }
++  };
++  
++  res.status(statusCode).json(response);
++};
++
++export const sendError = (
++  res: Response,
++  error: string | object,
++  statusCode = 400,
++  details?: any
++) => {
++  const response: ApiResponse = {
++    success: false,
++    error,
++    ...(details && process.env.NODE_ENV === 'development' && { details }),
++    meta: {
++      timestamp: new Date().toISOString(),
++      version: process.env.API_VERSION || '1.0.0'
++    }
++  };
++  
++  res.status(statusCode).json(response);
++};
++
++// Utility for paginated responses
++export const sendPaginatedResponse = <T>(
++  res: Response,
++  data: T[],
++  pagination: {
++    page: number;
++    limit: number;
++    total: number;
++  },
++  message?: string
++) => {
++  const totalPages = Math.ceil(pagination.total / pagination.limit);
++  
++  sendSuccess(res, data, message, 200, {
++    ...pagination,
++    totalPages
++  });
++};
+diff --git a/src/middleware/validators/common.ts b/src/middleware/validators/common.ts
+index de619dd..99f2ca7 100644
+--- a/src/middleware/validators/common.ts
++++ b/src/middleware/validators/common.ts
+@@ -1,5 +1,6 @@
+ import { Request, Response, NextFunction } from 'express';
+-import { validationResult, ValidationError } from 'express-validator';
++import { validationResult } from 'express-validator';
++import { sendError } from '../utils/responseFormatter';
+ 
+ export const handleValidationErrors = (
+   req: Request,
+@@ -8,13 +9,33 @@ export const handleValidationErrors = (
+ ) => {
+   const errors = validationResult(req);
+   if (!errors.isEmpty()) {
+-    return res.status(400).json({
+-      success: false,
+-      errors: errors.array().map((error: ValidationError) => ({
+-        field: error.param,
+-        message: error.msg
+-      }))
+-    });
++    const formattedErrors = errors.array().map(error => ({
++      field: error.param,
++      message: error.msg,
++      value: error.value
++    }));
++    
++    sendError(res, {
++      message: 'Validation failed',
++      errors: formattedErrors
++    }, 400);
++    return;
+   }
+   next();
++};
++
++export const validateRequired = (fields: string[]) => {
++  return (req: Request, res: Response, next: NextFunction) => {
++    const missingFields = fields.filter(field => !req.body[field]);
++    
++    if (missingFields.length > 0) {
++      sendError(res, {
++        message: 'Missing required fields',
++        missingFields
++      }, 400);
++      return;
++    }
++    
++    next();
++  };
+ };
+\ No newline at end of file
